@@ -1,5 +1,6 @@
 package com.pharmacy.pharmacy_management.repository;
 
+import com.pharmacy.pharmacy_management.dto.OrderItemDTO;
 import com.pharmacy.pharmacy_management.model.Order;
 import com.pharmacy.pharmacy_management.model.OrderItem;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -52,6 +53,8 @@ public class OrderRepository {
             Order order = new Order();
             order.setId(rs.getLong("id"));
             order.setCustomerId(rs.getLong("customer_id"));
+            order.setOrderDate(rs.getTimestamp("order_date") != null ?
+                    rs.getTimestamp("order_date").toLocalDateTime() : null);
             order.setTotalAmount(rs.getDouble("total_amount"));
             order.setStatus(rs.getString("status"));
             return order;
@@ -65,5 +68,48 @@ public class OrderRepository {
         params.addValue("status", status);
         params.addValue("id", orderId);
         return namedParameterJdbcTemplate.update(sql, params);
+    }
+
+    // NEW METHOD 1: Find order by ID
+    public Order findById(Long orderId) {
+        String sql = "SELECT * FROM orders WHERE id = :id";
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", orderId);
+        try {
+            return namedParameterJdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> {
+                Order order = new Order();
+                order.setId(rs.getLong("id"));
+                order.setCustomerId(rs.getLong("customer_id"));
+                order.setOrderDate(rs.getTimestamp("order_date") != null ?
+                        rs.getTimestamp("order_date").toLocalDateTime() : null);
+                order.setTotalAmount(rs.getDouble("total_amount"));
+                order.setStatus(rs.getString("status"));
+                return order;
+            });
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // NEW METHOD 2: Get order items with product details
+    public List<OrderItemDTO> getOrderItemsWithDetails(Long orderId) {
+        String sql = "SELECT oi.product_id, oi.quantity, oi.price, " +
+                "p.name as product_name " +
+                "FROM order_items oi " +
+                "JOIN products p ON oi.product_id = p.id " +
+                "WHERE oi.order_id = :orderId";
+
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("orderId", orderId);
+
+        return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> {
+            OrderItemDTO item = new OrderItemDTO();
+            item.setProductId(rs.getLong("product_id"));
+            item.setProductName(rs.getString("product_name"));
+            item.setQuantity(rs.getInt("quantity"));
+            item.setPrice(rs.getDouble("price"));
+            item.setSubtotal(rs.getDouble("price") * rs.getInt("quantity"));
+            return item;
+        });
     }
 }

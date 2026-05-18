@@ -1,5 +1,6 @@
 package com.pharmacy.pharmacy_management.controller;
 
+import com.pharmacy.pharmacy_management.dto.OrderDetailsDTO;
 import com.pharmacy.pharmacy_management.model.Order;
 import com.pharmacy.pharmacy_management.model.OrderItem;
 import com.pharmacy.pharmacy_management.service.OrderService;
@@ -50,4 +51,26 @@ public class OrderController {
         return ResponseEntity.ok(
                 orderService.getMyOrders(customerId));
     }
+
+    // NEW: GET order details with items (Customer only)
+    @GetMapping("/{orderId}/details")
+    public ResponseEntity<?> getOrderDetails(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        try {
+            // Get current logged in customer id
+            Long customerId = userRepository
+                    .findByUsername(authentication.getName()).getId();
+
+            // Get order details with items
+            OrderDetailsDTO orderDetails = orderService.getOrderDetails(orderId, customerId);
+
+            // Return success response
+            return ResponseEntity.ok(orderDetails);
+        } catch (RuntimeException e) {
+            // Return error message if something goes wrong
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }
